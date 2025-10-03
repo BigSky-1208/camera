@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web画面合成ツール (OBS風)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+        .placeholder-bg {
+            background-image:
+                linear-gradient(45deg, #2d3748 25%, transparent 25%),
+                linear-gradient(-45deg, #2d3748 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #2d3748 75%),
+                linear-gradient(-45deg, transparent 75%, #2d3748 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
+
+    <main class="flex-grow container mx-auto p-4 md:p-6">
+        <!-- ヘッダー -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold">Web画面合成ツール (OBS風)</h1>
+            <p class="text-gray-400 mt-2">インストール不要。2つの画面やカメラを1つに合成し、Google Meetで共有できます。</p>
+        </div>
+
+        <!-- 使い方 -->
+        <div class="bg-gray-800 border border-gray-700 p-4 rounded-lg mb-6 max-w-4xl mx-auto">
+            <h2 class="text-xl font-semibold mb-3 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                使い方
+            </h2>
+            <ol class="list-decimal list-inside space-y-2 text-gray-300">
+                <li>下の「ソース1」と「ソース2」で、共有したい画面（ウィンドウ or タブ）やカメラを選択します。</li>
+                <li>中央のプレビューに合成された映像が表示されることを確認します。</li>
+                <li>Google Meetの会議画面に移動し、「画面を共有」から「**タブ**」を選択します。</li>
+                <li>タブの一覧から「<strong class="text-teal-400">Web画面合成ツール (OBS風)</strong>」を選んで共有を開始してください。</li>
+            </ol>
+        </div>
+
+        <!-- メインコンテンツ -->
+        <div class="flex flex-col lg:flex-row items-center justify-center gap-4">
+            
+            <!-- ソース1 コントロール -->
+            <div class="w-full lg:w-1/5 bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center space-y-3 h-48 lg:h-auto">
+                <h3 class="text-lg font-bold">ソース1</h3>
+                <button id="selectScreen1" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">画面を選択</button>
+                <button id="selectCamera1" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">カメラを選択</button>
+                <p id="status1" class="text-sm text-gray-400 h-4">未選択</p>
+            </div>
+
+            <!-- 合成プレビュー -->
+            <div class="w-full lg:w-3/5 aspect-video bg-black rounded-lg shadow-2xl border-2 border-gray-700 overflow-hidden">
+                <canvas id="compositeCanvas" class="w-full h-full placeholder-bg"></canvas>
+            </div>
+
+            <!-- ソース2 コントロール -->
+            <div class="w-full lg:w-1/5 bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center space-y-3 h-48 lg:h-auto">
+                <h3 class="text-lg font-bold">ソース2</h3>
+                <button id="selectScreen2" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">画面を選択</button>
+                <button id="selectCamera2" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">カメラを選択</button>
+                <p id="status2" class="text-sm text-gray-400 h-4">未選択</p>
+            </div>
+        </div>
+
+        <!-- 内部処理用の非表示ビデオ要素 -->
+        <div class="hidden">
+            <video id="source1Video" playsinline autoplay muted></video>
+            <video id="source2Video" playsinline autoplay muted></video>
+        </div>
+    </main>
+
+    <!-- エラーメッセージ用モーダル -->
+    <div id="permissionModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-auto border border-gray-700">
+            <h3 class="text-xl font-bold text-red-400 mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                アクセス権限エラー
+            </h3>
+            <p class="text-gray-300 mb-4">
+                画面共有を開始できませんでした。<br>
+                ブラウザの設定で、このページに対する画面キャプチャの権限がブロックされている可能性があります。
+            </p>
+            <p class="text-gray-300 mb-6">
+                このツールが別のページに埋め込まれて動作している場合、埋め込み元のセキュリティポリシーによって機能が制限されていることが原因です。
+            </p>
+            <button id="closeModal" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">閉じる</button>
+        </div>
+    </div>
+    
+    <footer class="text-center text-gray-500 text-sm p-4">
+        <p>このツールは、ブラウザの機能のみで動作します。映像データが外部サーバーに送信されることはありません。</p>
+    </footer>
+
+    <script>
+        // DOM要素の取得
+        const canvas = document.getElementById('compositeCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const video1 = document.getElementById('source1Video');
+        const video2 = document.getElementById('source2Video');
+        
+        const status1 = document.getElementById('status1');
+        const status2 = document.getElementById('status2');
+        
+        const modal = document.getElementById('permissionModal');
+        const closeModalBtn = document.getElementById('closeModal');
+
+        let stream1 = null;
+        let stream2 = null;
+
+        // キャンバスの解像度設定 (16:9)
+        canvas.width = 1280;
+        canvas.height = 720;
+        
+        // モーダルを閉じるイベント
+        closeModalBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        // ソース選択ボタンのイベントリスナー
+        document.getElementById('selectScreen1').addEventListener('click', async () => {
+            stream1 = await selectSource('display', video1, status1);
+            if (stream1) status1.textContent = '画面を選択中';
+        });
+        document.getElementById('selectCamera1').addEventListener('click', async () => {
+            stream1 = await selectSource('user', video1, status1);
+            if (stream1) status1.textContent = 'カメラを選択中';
+        });
+        document.getElementById('selectScreen2').addEventListener('click', async () => {
+            stream2 = await selectSource('display', video2, status2);
+            if (stream2) status2.textContent = '画面を選択中';
+        });
+        document.getElementById('selectCamera2').addEventListener('click', async () => {
+            stream2 = await selectSource('user', video2, status2);
+            if (stream2) status2.textContent = 'カメラを選択中';
+        });
+
+        // ソースを選択する共通関数
+        async function selectSource(type, videoElement, statusElement) {
+            try {
+                let stream;
+                if (type === 'display') {
+                    stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                } else {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                }
+                videoElement.srcObject = stream;
+                // 共有停止を検知
+                stream.getVideoTracks()[0].onended = () => {
+                    videoElement.srcObject = null;
+                    statusElement.textContent = '未選択';
+                     if(videoElement.id === 'source1Video') stream1 = null;
+                     if(videoElement.id === 'source2Video') stream2 = null;
+                };
+                return stream;
+            } catch (err) {
+                console.error("Error selecting source:", err);
+                if (err.name === 'NotAllowedError') {
+                    statusElement.textContent = 'アクセスが拒否されました';
+                    modal.classList.remove('hidden'); // エラーモーダルを表示
+                } else {
+                    statusElement.textContent = '選択失敗';
+                }
+                return null;
+            }
+        }
+
+        // キャンバスに映像を描画するメインループ
+        function drawCanvas() {
+            // 背景をクリア
+            ctx.fillStyle = '#1a202c'; // bg-gray-800
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const halfWidth = canvas.width / 2;
+            const height = canvas.height;
+
+            // ソース1を描画
+            if (stream1 && video1.readyState >= 3) {
+                const videoAspect = video1.videoWidth / video1.videoHeight;
+                const canvasAspect = halfWidth / height;
+                let drawWidth, drawHeight, offsetX, offsetY;
+
+                if (videoAspect > canvasAspect) { // 動画が横長
+                    drawWidth = halfWidth;
+                    drawHeight = drawWidth / videoAspect;
+                    offsetX = 0;
+                    offsetY = (height - drawHeight) / 2;
+                } else { // 動画が縦長
+                    drawHeight = height;
+                    drawWidth = drawHeight * videoAspect;
+                    offsetX = (halfWidth - drawWidth) / 2;
+                    offsetY = 0;
+                }
+                ctx.drawImage(video1, offsetX, offsetY, drawWidth, drawHeight);
+            } else {
+                drawPlaceholder(0, 'ソース1を選択してください');
+            }
+
+            // ソース2を描画
+            if (stream2 && video2.readyState >= 3) {
+                const videoAspect = video2.videoWidth / video2.videoHeight;
+                const canvasAspect = halfWidth / height;
+                let drawWidth, drawHeight, offsetX, offsetY;
+                
+                if (videoAspect > canvasAspect) { // 動画が横長
+                    drawWidth = halfWidth;
+                    drawHeight = drawWidth / videoAspect;
+                    offsetX = halfWidth;
+                    offsetY = (height - drawHeight) / 2;
+                } else { // 動画が縦長
+                    drawHeight = height;
+                    drawWidth = drawHeight * videoAspect;
+                    offsetX = halfWidth + (halfWidth - drawWidth) / 2;
+                    offsetY = 0;
+                }
+                ctx.drawImage(video2, offsetX, offsetY, drawWidth, drawHeight);
+            } else {
+                drawPlaceholder(halfWidth, 'ソース2を選択してください');
+            }
+            
+            // 境界線
+            ctx.fillStyle = '#4a5568'; // border-gray-700
+            ctx.fillRect(halfWidth - 1, 0, 2, height);
+
+            requestAnimationFrame(drawCanvas);
+        }
+
+        // プレースホルダーを描画する関数
+        function drawPlaceholder(x, text) {
+            const halfWidth = canvas.width / 2;
+            const height = canvas.height;
+            ctx.fillStyle = '#2d3748'; // bg-gray-700
+            ctx.fillRect(x, 0, halfWidth, height);
+            ctx.fillStyle = 'white';
+            ctx.font = '24px "Inter"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, x + halfWidth / 2, height / 2);
+        }
+
+        // 描画ループを開始
+        drawCanvas();
+    </script>
+</body>
+</html>
+
