@@ -46,18 +46,35 @@
             flex: 1 1 50%;
         }
         /* レイアウト: PiP (Picture in Picture) */
-        #layout-container.layout-pip {
+        #layout-container.layout-pip, #layout-container.layout-pip-reversed {
             position: relative;
         }
         /* PiPモードでは分割線を非表示にする */
-        #layout-container.layout-pip .hide-in-pip {
+        #layout-container.layout-pip .hide-in-pip, #layout-container.layout-pip-reversed .hide-in-pip {
             display: none;
         }
+        /* 通常PiP (1がメイン, 2が小窓) */
         #layout-container.layout-pip #source1-container {
             width: 100%;
             height: 100%;
         }
         #layout-container.layout-pip #source2-container {
+            position: absolute;
+            width: 30%;
+            height: auto;
+            aspect-ratio: 16 / 9;
+            bottom: 2%;
+            right: 2%;
+            border: 2px solid #4a5568;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+        }
+        /* 逆PiP (2がメイン, 1が小窓) */
+        #layout-container.layout-pip-reversed #source2-container {
+            width: 100%;
+            height: 100%;
+        }
+        #layout-container.layout-pip-reversed #source1-container {
             position: absolute;
             width: 30%;
             height: auto;
@@ -118,7 +135,7 @@
                 <li><strong class="text-yellow-400">重要:</strong> このツールは、<strong class="text-yellow-400">他のウィンドウを合成するための舞台</strong>です。ソース選択時に、このツール自体のタブは選ばないでください。</li>
                 <li>下の「ソース1」「ソース2」で、共有したい<strong class="text-yellow-400">別の</strong>アプリやブラウザタブを選択します。</li>
                 <li>レイアウトを選び、中央のプレビューに映像が合成されていることを確認します。</li>
-                <li>数字キーの <kbd>1</kbd> (左右分割) と <kbd>2</kbd> (小窓) でレイアウトを素早く切り替えられます。</li>
+                <li>数字キーの <kbd>1</kbd> (左右分割), <kbd>2</kbd> (小窓), <kbd>3</kbd> (逆小窓) でレイアウトを素早く切り替えられます。</li>
                 <li>Google Meetで画面共有を開始し、「<strong>タブを共有</strong>」から「<strong class="text-teal-400">Web画面合成ツール (OBS風)</strong>」を選んでください。</li>
             </ol>
         </div>
@@ -128,6 +145,7 @@
             <h3 class="text-lg font-semibold">レイアウト:</h3>
             <button id="layout-side-by-side" class="bg-gray-700 hover:bg-teal-600 border-2 border-teal-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">左右分割</button>
             <button id="layout-pip" class="bg-gray-700 hover:bg-teal-600 border-2 border-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">小窓 (PiP)</button>
+            <button id="layout-pip-reversed" class="bg-gray-700 hover:bg-teal-600 border-2 border-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">逆小窓</button>
         </div>
 
         <!-- メインコンテンツ -->
@@ -229,6 +247,7 @@
         const closeWarningModalBtn = document.getElementById('closeWarningModal');
         const layoutSideBySideBtn = document.getElementById('layout-side-by-side');
         const layoutPipBtn = document.getElementById('layout-pip');
+        const layoutPipReversedBtn = document.getElementById('layout-pip-reversed');
         const togglePresentationModeBtn = document.getElementById('togglePresentationMode');
         const presentationModeText = document.getElementById('presentationModeText');
         const iconExpand = document.getElementById('presentation-icon-expand');
@@ -249,27 +268,40 @@
         });
 
         function updateLayoutButtons() {
+            //いったんすべてのボタンの選択状態を解除
+            layoutSideBySideBtn.classList.remove('border-teal-500');
+            layoutPipBtn.classList.remove('border-teal-500');
+            layoutPipReversedBtn.classList.remove('border-teal-500');
+            layoutSideBySideBtn.classList.add('border-gray-700');
+            layoutPipBtn.classList.add('border-gray-700');
+            layoutPipReversedBtn.classList.add('border-gray-700');
+
+            //現在のレイアウトに応じてボタンを選択状態にする
             if (layoutContainer.classList.contains('layout-side-by-side')) {
                 layoutSideBySideBtn.classList.add('border-teal-500');
                 layoutSideBySideBtn.classList.remove('border-gray-700');
-                layoutPipBtn.classList.add('border-gray-700');
-                layoutPipBtn.classList.remove('border-teal-500');
-            } else { // layout-pip
+            } else if (layoutContainer.classList.contains('layout-pip')) {
                 layoutPipBtn.classList.add('border-teal-500');
                 layoutPipBtn.classList.remove('border-gray-700');
-                layoutSideBySideBtn.classList.add('border-gray-700');
-                layoutSideBySideBtn.classList.remove('border-teal-500');
+            } else if (layoutContainer.classList.contains('layout-pip-reversed')) {
+                layoutPipReversedBtn.classList.add('border-teal-500');
+                layoutPipReversedBtn.classList.remove('border-gray-700');
             }
         }
 
         layoutSideBySideBtn.addEventListener('click', () => {
-            layoutContainer.classList.remove('layout-pip');
+            layoutContainer.classList.remove('layout-pip', 'layout-pip-reversed');
             layoutContainer.classList.add('layout-side-by-side');
             updateLayoutButtons();
         });
         layoutPipBtn.addEventListener('click', () => {
-            layoutContainer.classList.remove('layout-side-by-side');
+            layoutContainer.classList.remove('layout-side-by-side', 'layout-pip-reversed');
             layoutContainer.classList.add('layout-pip');
+            updateLayoutButtons();
+        });
+        layoutPipReversedBtn.addEventListener('click', () => {
+            layoutContainer.classList.remove('layout-side-by-side', 'layout-pip');
+            layoutContainer.classList.add('layout-pip-reversed');
             updateLayoutButtons();
         });
 
@@ -377,14 +409,20 @@
             }
             // '1'キーで左右分割レイアウトに切り替え
             if (event.key === '1') {
-                layoutContainer.classList.remove('layout-pip');
+                layoutContainer.classList.remove('layout-pip', 'layout-pip-reversed');
                 layoutContainer.classList.add('layout-side-by-side');
                 updateLayoutButtons();
             }
             // '2'キーで小窓(PiP)レイアウトに切り替え
             if (event.key === '2') {
-                layoutContainer.classList.remove('layout-side-by-side');
+                layoutContainer.classList.remove('layout-side-by-side', 'layout-pip-reversed');
                 layoutContainer.classList.add('layout-pip');
+                updateLayoutButtons();
+            }
+            // '3'キーで逆小窓レイアウトに切り替え
+            if (event.key === '3') {
+                layoutContainer.classList.remove('layout-side-by-side', 'layout-pip');
+                layoutContainer.classList.add('layout-pip-reversed');
                 updateLayoutButtons();
             }
         });
