@@ -37,22 +37,32 @@
                 使い方
             </h2>
             <ol class="list-decimal list-inside space-y-2 text-gray-300">
-                <li>下の「ソース1」と「ソース2」で、共有したい画面（ウィンドウ or タブ）やカメラを選択します。</li>
-                <li>中央のプレビューに合成された映像が表示されることを確認します。</li>
+                <li><strong class="text-yellow-400">重要:</strong> ソースを選択する際、このツール自体のタブ/ウィンドウは選択しないでください。</li>
+                <li>下の「ソース1」と「ソース2」で、共有したい<strong class="text-yellow-400">別の</strong>画面（ウィンドウ or タブ）やカメラを選択します。</li>
+                <li>レイアウトを選択し、中央のプレビューに合成された映像が表示されることを確認します。</li>
                 <li>Google Meetの会議画面に移動し、「画面を共有」から「**タブ**」を選択します。</li>
                 <li>タブの一覧から「<strong class="text-teal-400">Web画面合成ツール (OBS風)</strong>」を選んで共有を開始してください。</li>
             </ol>
         </div>
+        
+        <!-- レイアウト選択 -->
+        <div class="flex justify-center items-center gap-4 mb-6">
+            <h3 class="text-lg font-semibold">レイアウト:</h3>
+            <button id="layout-side-by-side" class="bg-gray-700 hover:bg-teal-600 border-2 border-teal-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">左右分割</button>
+            <button id="layout-pip" class="bg-gray-700 hover:bg-teal-600 border-2 border-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">小窓 (PiP)</button>
+        </div>
+
 
         <!-- メインコンテンツ -->
         <div class="flex flex-col lg:flex-row items-center justify-center gap-4">
             
             <!-- ソース1 コントロール -->
-            <div class="w-full lg:w-1/5 bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center space-y-3 h-48 lg:h-auto">
+            <div class="w-full lg:w-1/5 bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center space-y-3">
                 <h3 class="text-lg font-bold">ソース1</h3>
                 <button id="selectScreen1" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">画面を選択</button>
                 <button id="selectCamera1" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">カメラを選択</button>
-                <p id="status1" class="text-sm text-gray-400 h-4">未選択</p>
+                <button id="reset1" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 mt-2">リセット</button>
+                <p id="status1" class="text-sm text-gray-400 h-4 mt-1">未選択</p>
             </div>
 
             <!-- 合成プレビュー -->
@@ -61,11 +71,12 @@
             </div>
 
             <!-- ソース2 コントロール -->
-            <div class="w-full lg:w-1/5 bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center space-y-3 h-48 lg:h-auto">
+            <div class="w-full lg:w-1/5 bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center space-y-3">
                 <h3 class="text-lg font-bold">ソース2</h3>
                 <button id="selectScreen2" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">画面を選択</button>
                 <button id="selectCamera2" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">カメラを選択</button>
-                <p id="status2" class="text-sm text-gray-400 h-4">未選択</p>
+                <button id="reset2" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 mt-2">リセット</button>
+                <p id="status2" class="text-sm text-gray-400 h-4 mt-1">未選択</p>
             </div>
         </div>
 
@@ -99,153 +110,168 @@
     </footer>
 
     <script>
-        // DOM要素の取得
         const canvas = document.getElementById('compositeCanvas');
         const ctx = canvas.getContext('2d');
-
         const video1 = document.getElementById('source1Video');
         const video2 = document.getElementById('source2Video');
-        
         const status1 = document.getElementById('status1');
         const status2 = document.getElementById('status2');
-        
         const modal = document.getElementById('permissionModal');
         const closeModalBtn = document.getElementById('closeModal');
+        const layoutSideBySideBtn = document.getElementById('layout-side-by-side');
+        const layoutPipBtn = document.getElementById('layout-pip');
 
         let stream1 = null;
         let stream2 = null;
+        let currentLayout = 'side-by-side';
 
-        // キャンバスの解像度設定 (16:9)
         canvas.width = 1280;
         canvas.height = 720;
         
-        // モーダルを閉じるイベント
-        closeModalBtn.addEventListener('click', () => {
-            modal.classList.add('hidden');
+        closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
+
+        function updateLayoutButtons() {
+            if (currentLayout === 'side-by-side') {
+                layoutSideBySideBtn.classList.add('border-teal-500');
+                layoutSideBySideBtn.classList.remove('border-gray-700');
+                layoutPipBtn.classList.add('border-gray-700');
+                layoutPipBtn.classList.remove('border-teal-500');
+            } else {
+                layoutPipBtn.classList.add('border-teal-500');
+                layoutPipBtn.classList.remove('border-gray-700');
+                layoutSideBySideBtn.classList.add('border-gray-700');
+                layoutSideBySideBtn.classList.remove('border-teal-500');
+            }
+        }
+
+        layoutSideBySideBtn.addEventListener('click', () => {
+            currentLayout = 'side-by-side';
+            updateLayoutButtons();
+        });
+        layoutPipBtn.addEventListener('click', () => {
+            currentLayout = 'pip';
+            updateLayoutButtons();
         });
 
-        // ソース選択ボタンのイベントリスナー
-        document.getElementById('selectScreen1').addEventListener('click', async () => {
-            stream1 = await selectSource('display', video1, status1);
-            if (stream1) status1.textContent = '画面を選択中';
-        });
-        document.getElementById('selectCamera1').addEventListener('click', async () => {
-            stream1 = await selectSource('user', video1, status1);
-            if (stream1) status1.textContent = 'カメラを選択中';
-        });
-        document.getElementById('selectScreen2').addEventListener('click', async () => {
-            stream2 = await selectSource('display', video2, status2);
-            if (stream2) status2.textContent = '画面を選択中';
-        });
-        document.getElementById('selectCamera2').addEventListener('click', async () => {
-            stream2 = await selectSource('user', video2, status2);
-            if (stream2) status2.textContent = 'カメラを選択中';
-        });
+        document.getElementById('selectScreen1').addEventListener('click', () => handleSourceSelection('display', 1));
+        document.getElementById('selectCamera1').addEventListener('click', () => handleSourceSelection('user', 1));
+        document.getElementById('selectScreen2').addEventListener('click', () => handleSourceSelection('display', 2));
+        document.getElementById('selectCamera2').addEventListener('click', () => handleSourceSelection('user', 2));
 
-        // ソースを選択する共通関数
-        async function selectSource(type, videoElement, statusElement) {
+        document.getElementById('reset1').addEventListener('click', () => resetSource(1));
+        document.getElementById('reset2').addEventListener('click', () => resetSource(2));
+
+        async function handleSourceSelection(type, sourceNum) {
+            const video = (sourceNum === 1) ? video1 : video2;
+            const status = (sourceNum === 1) ? status1 : status2;
+            
             try {
-                let stream;
-                if (type === 'display') {
-                    stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-                } else {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                }
-                videoElement.srcObject = stream;
-                // 共有停止を検知
-                stream.getVideoTracks()[0].onended = () => {
-                    videoElement.srcObject = null;
-                    statusElement.textContent = '未選択';
-                     if(videoElement.id === 'source1Video') stream1 = null;
-                     if(videoElement.id === 'source2Video') stream2 = null;
-                };
-                return stream;
+                const stream = await navigator.mediaDevices[type === 'display' ? 'getDisplayMedia' : 'getUserMedia']({ video: true, audio: false });
+                
+                if (sourceNum === 1) stream1 = stream;
+                else stream2 = stream;
+
+                video.srcObject = stream;
+                status.textContent = type === 'display' ? '画面を選択中' : 'カメラを選択中';
+
+                stream.getVideoTracks()[0].onended = () => resetSource(sourceNum);
             } catch (err) {
                 console.error("Error selecting source:", err);
                 if (err.name === 'NotAllowedError') {
-                    statusElement.textContent = 'アクセスが拒否されました';
-                    modal.classList.remove('hidden'); // エラーモーダルを表示
+                    status.textContent = 'アクセスが拒否されました';
+                    modal.classList.remove('hidden');
                 } else {
-                    statusElement.textContent = '選択失敗';
+                    status.textContent = '選択失敗';
                 }
-                return null;
             }
         }
 
-        // キャンバスに映像を描画するメインループ
-        function drawCanvas() {
-            // 背景をクリア
-            ctx.fillStyle = '#1a202c'; // bg-gray-800
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function resetSource(sourceNum) {
+            const video = (sourceNum === 1) ? video1 : video2;
+            const status = (sourceNum === 1) ? status1 : status2;
+            let stream = (sourceNum === 1) ? stream1 : stream2;
 
-            const halfWidth = canvas.width / 2;
-            const height = canvas.height;
-
-            // ソース1を描画
-            if (stream1 && video1.readyState >= 3) {
-                const videoAspect = video1.videoWidth / video1.videoHeight;
-                const canvasAspect = halfWidth / height;
-                let drawWidth, drawHeight, offsetX, offsetY;
-
-                if (videoAspect > canvasAspect) { // 動画が横長
-                    drawWidth = halfWidth;
-                    drawHeight = drawWidth / videoAspect;
-                    offsetX = 0;
-                    offsetY = (height - drawHeight) / 2;
-                } else { // 動画が縦長
-                    drawHeight = height;
-                    drawWidth = drawHeight * videoAspect;
-                    offsetX = (halfWidth - drawWidth) / 2;
-                    offsetY = 0;
-                }
-                ctx.drawImage(video1, offsetX, offsetY, drawWidth, drawHeight);
-            } else {
-                drawPlaceholder(0, 'ソース1を選択してください');
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
             }
-
-            // ソース2を描画
-            if (stream2 && video2.readyState >= 3) {
-                const videoAspect = video2.videoWidth / video2.videoHeight;
-                const canvasAspect = halfWidth / height;
-                let drawWidth, drawHeight, offsetX, offsetY;
-                
-                if (videoAspect > canvasAspect) { // 動画が横長
-                    drawWidth = halfWidth;
-                    drawHeight = drawWidth / videoAspect;
-                    offsetX = halfWidth;
-                    offsetY = (height - drawHeight) / 2;
-                } else { // 動画が縦長
-                    drawHeight = height;
-                    drawWidth = drawHeight * videoAspect;
-                    offsetX = halfWidth + (halfWidth - drawWidth) / 2;
-                    offsetY = 0;
-                }
-                ctx.drawImage(video2, offsetX, offsetY, drawWidth, drawHeight);
-            } else {
-                drawPlaceholder(halfWidth, 'ソース2を選択してください');
-            }
-            
-            // 境界線
-            ctx.fillStyle = '#4a5568'; // border-gray-700
-            ctx.fillRect(halfWidth - 1, 0, 2, height);
-
-            requestAnimationFrame(drawCanvas);
+            video.srcObject = null;
+            if (sourceNum === 1) stream1 = null;
+            else stream2 = null;
+            status.textContent = '未選択';
         }
-
-        // プレースホルダーを描画する関数
-        function drawPlaceholder(x, text) {
-            const halfWidth = canvas.width / 2;
-            const height = canvas.height;
-            ctx.fillStyle = '#2d3748'; // bg-gray-700
-            ctx.fillRect(x, 0, halfWidth, height);
+        
+        function drawPlaceholder(x, y, w, h, text) {
+            ctx.fillStyle = '#2d3748';
+            ctx.fillRect(x, y, w, h);
             ctx.fillStyle = 'white';
             ctx.font = '24px "Inter"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(text, x + halfWidth / 2, height / 2);
+            ctx.fillText(text, x + w / 2, y + h / 2);
         }
 
-        // 描画ループを開始
+        function drawVideoWithAspectRatio(video, x, y, w, h) {
+             if (video.videoWidth === 0) {
+                 drawPlaceholder(x, y, w, h, "表示不可: 別の画面を選択してください");
+                 return;
+             }
+            const videoAspect = video.videoWidth / video.videoHeight;
+            const canvasAspect = w / h;
+            let drawWidth, drawHeight, offsetX, offsetY;
+
+            if (videoAspect > canvasAspect) {
+                drawWidth = w;
+                drawHeight = drawWidth / videoAspect;
+                offsetX = x;
+                offsetY = y + (h - drawHeight) / 2;
+            } else {
+                drawHeight = h;
+                drawWidth = drawHeight * videoAspect;
+                offsetX = x + (w - drawWidth) / 2;
+                offsetY = y;
+            }
+            ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+        }
+
+        function drawCanvas() {
+            ctx.fillStyle = '#1a202c';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (currentLayout === 'side-by-side') {
+                const halfWidth = canvas.width / 2;
+                if (stream1) drawVideoWithAspectRatio(video1, 0, 0, halfWidth, canvas.height);
+                else drawPlaceholder(0, 0, halfWidth, canvas.height, 'ソース1を選択');
+                
+                if (stream2) drawVideoWithAspectRatio(video2, halfWidth, 0, halfWidth, canvas.height);
+                else drawPlaceholder(halfWidth, 0, halfWidth, canvas.height, 'ソース2を選択');
+
+                ctx.fillStyle = '#4a5568';
+                ctx.fillRect(halfWidth - 1, 0, 2, canvas.height);
+            } else if (currentLayout === 'pip') {
+                const pipWidth = canvas.width * 0.25;
+                const pipHeight = pipWidth / (16/9);
+                const margin = canvas.width * 0.01;
+
+                if (stream1) drawVideoWithAspectRatio(video1, 0, 0, canvas.width, canvas.height);
+                else drawPlaceholder(0, 0, canvas.width, canvas.height, 'ソース1 (背景) を選択');
+
+                if (stream2) {
+                    ctx.save();
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                    ctx.shadowBlur = 15;
+                    drawVideoWithAspectRatio(video2, canvas.width - pipWidth - margin, canvas.height - pipHeight - margin, pipWidth, pipHeight);
+                    ctx.strokeStyle = '#4a5568';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(canvas.width - pipWidth - margin, canvas.height - pipHeight - margin, pipWidth, pipHeight);
+                    ctx.restore();
+                } else {
+                     drawPlaceholder(canvas.width - pipWidth - margin, canvas.height - pipHeight - margin, pipWidth, pipHeight, 'ソース2');
+                }
+            }
+            requestAnimationFrame(drawCanvas);
+        }
+
+        updateLayoutButtons();
         drawCanvas();
     </script>
 </body>
