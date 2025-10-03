@@ -23,8 +23,8 @@
         body.presentation-mode {
             overflow: hidden; /* スクロールバーを隠す */
         }
-        .hide-in-presentation {
-            display: none !important; /* UI要素を非表示 */
+        body.presentation-mode .hide-in-presentation {
+            display: none !important; /* このクラスを持つUI要素を非表示 */
         }
         body.presentation-mode #canvas-container {
             position: fixed;
@@ -73,7 +73,7 @@
             </ol>
         </div>
         
-        <!-- レイアウト選択 & プレゼンテーションモード -->
+        <!-- レイアウト選択 -->
         <div class="flex justify-center items-center gap-4 mb-6 hide-in-presentation">
             <h3 class="text-lg font-semibold">レイアウト:</h3>
             <button id="layout-side-by-side" class="bg-gray-700 hover:bg-teal-600 border-2 border-teal-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">左右分割</button>
@@ -108,7 +108,7 @@
         </div>
 
          <!-- プレゼンテーションモードボタン -->
-         <div class="flex justify-center mt-6">
+         <div class="flex justify-center mt-6 hide-in-presentation">
              <button id="togglePresentationMode" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 flex items-center">
                 <svg id="presentation-icon-expand" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
                 <svg id="presentation-icon-compress" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 hidden"><path d="M15 3h6v6m-11 5L21 3m-6 12v6h-6m5-11L3 21"></path></svg>
@@ -399,24 +399,34 @@
             requestAnimationFrame(drawCanvas);
         }
         
-        // プレゼンテーションモードのロジック
+        // --- プレゼンテーションモードのロジック ---
+        // UIの表示・非表示を制御します
         function updatePresentationModeUI() {
+            // bodyに 'presentation-mode' クラスがあるかどうかで表示を切り替える
             if (document.body.classList.contains('presentation-mode')) {
+                // --- プレゼンテーションモード（UI非表示） ---
+                // CSSによって .hide-in-presentation クラスを持つ要素が非表示になる
                 presentationModeText.textContent = '編集に戻る';
                 iconExpand.classList.add('hidden');
                 iconCompress.classList.remove('hidden');
             } else {
+                // --- 通常モード（UI表示） ---
+                // CSSのセレクタが一致しなくなり、UI要素が通常通り表示される
                 presentationModeText.textContent = '全画面表示';
                 iconExpand.classList.remove('hidden');
                 iconCompress.classList.add('hidden');
             }
         }
 
+        // 「全画面表示」ボタンがクリックされた時の処理
         togglePresentationModeBtn.addEventListener('click', () => {
+            // bodyタグに 'presentation-mode' クラスを付けたり外したりする
             document.body.classList.toggle('presentation-mode');
+            // 表示を更新
             updatePresentationModeUI();
         });
 
+        // Escapeキーでプレゼンテーションモードを終了する処理
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && document.body.classList.contains('presentation-mode')) {
                 document.body.classList.remove('presentation-mode');
@@ -424,6 +434,8 @@
             }
         });
 
+
+        // 初期化処理
         updateLayoutButtons();
         drawCanvas();
     </script>
