@@ -19,14 +19,46 @@
             background-size: 20px 20px;
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
+        #layout-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* アスペクト比を維持して全体を表示 */
+            background-color: #000;
+        }
+        /* レイアウト: 左右分割 */
+        #layout-container.layout-side-by-side {
+            display: flex;
+        }
+        #layout-container.layout-side-by-side > div {
+            flex: 1 1 50%;
+        }
+        /* レイアウト: PiP (Picture in Picture) */
+        #layout-container.layout-pip {
+            position: relative;
+        }
+        #layout-container.layout-pip #source1-container {
+            width: 100%;
+            height: 100%;
+        }
+        #layout-container.layout-pip #source2-container {
+            position: absolute;
+            width: 30%;
+            height: auto;
+            aspect-ratio: 16 / 9;
+            bottom: 2%;
+            right: 2%;
+            border: 2px solid #4a5568;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+        }
         /* プレゼンテーションモード用のスタイル */
         body.presentation-mode {
-            overflow: hidden; /* スクロールバーを隠す */
+            overflow: hidden;
         }
         body.presentation-mode .hide-in-presentation {
-            display: none !important; /* このクラスを持つUI要素を非表示 */
+            display: none !important;
         }
-        body.presentation-mode #canvas-container {
+        body.presentation-mode #layout-container {
             position: fixed;
             top: 0;
             left: 0;
@@ -92,9 +124,17 @@
                 <p id="status1" class="text-sm text-gray-400 h-4 mt-1">未選択</p>
             </div>
 
-            <!-- 合成プレビュー -->
-            <div id="canvas-container" class="w-full lg:w-3/5 aspect-video bg-black rounded-lg shadow-2xl border-2 border-gray-700 overflow-hidden">
-                <canvas id="compositeCanvas" class="w-full h-full placeholder-bg"></canvas>
+            <!-- 合成プレビュー (CanvasからDIVとVIDEOに変更) -->
+            <div id="layout-container" class="w-full lg:w-3/5 aspect-video bg-black rounded-lg shadow-2xl border-2 border-gray-700 overflow-hidden layout-side-by-side">
+                <div id="source1-container" class="w-full h-full placeholder-bg flex items-center justify-center relative">
+                    <video id="source1Video" class="absolute top-0 left-0 hidden" playsinline autoplay muted></video>
+                    <span id="source1-placeholder" class="text-gray-400">ソース1を選択</span>
+                </div>
+                 <div class="w-px bg-gray-700 hide-in-pip"></div>
+                <div id="source2-container" class="w-full h-full placeholder-bg flex items-center justify-center relative">
+                    <video id="source2Video" class="absolute top-0 left-0 hidden" playsinline autoplay muted></video>
+                     <span id="source2-placeholder" class="text-gray-400">ソース2を選択</span>
+                </div>
             </div>
 
             <!-- ソース2 コントロール -->
@@ -115,13 +155,6 @@
                 <span id="presentationModeText">全画面表示</span>
             </button>
         </div>
-
-        <!-- 診断用パネル (スクロールしても描画が止まらないよう、画面隅に小さく固定表示) -->
-        <div class="fixed bottom-0 left-0 w-px h-px opacity-0 pointer-events-none -z-10">
-            <video id="source1VideoDebug" playsinline autoplay muted></video>
-            <video id="source2VideoDebug" playsinline autoplay muted></video>
-        </div>
-
     </main>
 
     <!-- 初回警告モーダル -->
@@ -164,10 +197,12 @@
     </footer>
 
     <script>
-        const canvas = document.getElementById('compositeCanvas');
-        const ctx = canvas.getContext('2d');
-        const video1Debug = document.getElementById('source1VideoDebug');
-        const video2Debug = document.getElementById('source2VideoDebug');
+        const video1 = document.getElementById('source1Video');
+        const video2 = document.getElementById('source2Video');
+        const placeholder1 = document.getElementById('source1-placeholder');
+        const placeholder2 = document.getElementById('source2-placeholder');
+        const layoutContainer = document.getElementById('layout-container');
+
         const status1 = document.getElementById('status1');
         const status2 = document.getElementById('status2');
         const modal = document.getElementById('permissionModal');
@@ -181,15 +216,10 @@
         const iconExpand = document.getElementById('presentation-icon-expand');
         const iconCompress = document.getElementById('presentation-icon-compress');
 
-
         let stream1 = null;
         let stream2 = null;
-        let currentLayout = 'side-by-side';
         let pendingAction = null;
 
-        canvas.width = 1280;
-        canvas.height = 720;
-        
         closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
         closeWarningModalBtn.addEventListener('click', () => {
             warningModal.classList.add('hidden');
@@ -201,12 +231,12 @@
         });
 
         function updateLayoutButtons() {
-            if (currentLayout === 'side-by-side') {
+            if (layoutContainer.classList.contains('layout-side-by-side')) {
                 layoutSideBySideBtn.classList.add('border-teal-500');
                 layoutSideBySideBtn.classList.remove('border-gray-700');
                 layoutPipBtn.classList.add('border-gray-700');
                 layoutPipBtn.classList.remove('border-teal-500');
-            } else {
+            } else { // layout-pip
                 layoutPipBtn.classList.add('border-teal-500');
                 layoutPipBtn.classList.remove('border-gray-700');
                 layoutSideBySideBtn.classList.add('border-gray-700');
@@ -215,11 +245,13 @@
         }
 
         layoutSideBySideBtn.addEventListener('click', () => {
-            currentLayout = 'side-by-side';
+            layoutContainer.classList.remove('layout-pip');
+            layoutContainer.classList.add('layout-side-by-side');
             updateLayoutButtons();
         });
         layoutPipBtn.addEventListener('click', () => {
-            currentLayout = 'pip';
+            layoutContainer.classList.remove('layout-side-by-side');
+            layoutContainer.classList.add('layout-pip');
             updateLayoutButtons();
         });
 
@@ -248,11 +280,15 @@
                 
                 if (sourceNum === 1) {
                     stream1 = stream;
-                    video1Debug.srcObject = stream;
+                    video1.srcObject = stream;
+                    video1.classList.remove('hidden');
+                    placeholder1.classList.add('hidden');
                     status1.textContent = type === 'display' ? '画面を選択中' : 'カメラを選択中';
                 } else { // sourceNum === 2
                     stream2 = stream;
-                    video2Debug.srcObject = stream;
+                    video2.srcObject = stream;
+                    video2.classList.remove('hidden');
+                    placeholder2.classList.add('hidden');
                     status2.textContent = type === 'display' ? '画面を選択中' : 'カメラを選択中';
                 }
 
@@ -276,146 +312,40 @@
                     stream1.getTracks().forEach(track => track.stop());
                 }
                 stream1 = null;
-                video1Debug.srcObject = null;
+                video1.srcObject = null;
+                video1.classList.add('hidden');
+                placeholder1.classList.remove('hidden');
                 status1.textContent = '未選択';
             } else { // sourceNum === 2
                 if (stream2) {
                     stream2.getTracks().forEach(track => track.stop());
                 }
                 stream2 = null;
-                video2Debug.srcObject = null;
+                video2.srcObject = null;
+                video2.classList.add('hidden');
+                placeholder2.classList.remove('hidden');
                 status2.textContent = '未選択';
             }
         }
         
-        function getLines(ctx, text, maxWidth) {
-            const words = text.split(" ");
-            let lines = [];
-            if (!words.length) return lines;
-            let currentLine = words[0];
-
-            for (let i = 1; i < words.length; i++) {
-                const word = words[i];
-                const width = ctx.measureText(currentLine + " " + word).width;
-                if (width < maxWidth) {
-                    currentLine += " " + word;
-                } else {
-                    lines.push(currentLine);
-                    currentLine = word;
-                }
-            }
-            lines.push(currentLine);
-            return lines;
-        }
-
-        function drawPlaceholder(x, y, w, h, text, isError = false) {
-            ctx.fillStyle = isError ? '#5f2120' : '#2d3748';
-            ctx.fillRect(x, y, w, h);
-            ctx.fillStyle = 'white';
-            ctx.font = '20px "Inter"';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
-            const lines = getLines(ctx, text, w - 40);
-            const lineHeight = 24;
-            const totalHeight = lines.length * lineHeight;
-            let startY = y + (h - totalHeight) / 2 + (lineHeight / 2) - 4;
-
-            lines.forEach((line, i) => {
-                ctx.fillText(line, x + w / 2, startY + i * lineHeight);
-            });
-        }
-
-        function drawVideoWithAspectRatio(video, x, y, w, h) {
-             if (video.videoWidth === 0 || !video.srcObject) { // !video.srcObject を追加
-                 const errorText = "🚫 表示できません。このツール自体を選択していませんか？「リセット」を押して、別のウィンドウを選び直してください。";
-                 drawPlaceholder(x, y, w, h, errorText, true);
-                 return;
-             }
-            const videoAspect = video.videoWidth / video.videoHeight;
-            const canvasAspect = w / h;
-            let drawWidth, drawHeight, offsetX, offsetY;
-
-            if (videoAspect > canvasAspect) {
-                drawWidth = w;
-                drawHeight = drawWidth / videoaspect;
-                offsetX = x;
-                offsetY = y + (h - drawHeight) / 2;
-            } else {
-                drawHeight = h;
-                drawWidth = drawHeight * videoAspect;
-                offsetX = x + (w - drawWidth) / 2;
-                offsetY = y;
-            }
-            ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
-        }
-
-        function drawCanvas() {
-            ctx.fillStyle = '#1a202c';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            if (currentLayout === 'side-by-side') {
-                const halfWidth = canvas.width / 2;
-                if (stream1) drawVideoWithAspectRatio(video1Debug, 0, 0, halfWidth, canvas.height);
-                else drawPlaceholder(0, 0, halfWidth, canvas.height, 'ソース1を選択');
-                
-                if (stream2) drawVideoWithAspectRatio(video2Debug, halfWidth, 0, halfWidth, canvas.height);
-                else drawPlaceholder(halfWidth, 0, halfWidth, canvas.height, 'ソース2を選択');
-
-                ctx.fillStyle = '#4a5568';
-                ctx.fillRect(halfWidth - 1, 0, 2, canvas.height);
-            } else if (currentLayout === 'pip') {
-                const pipWidth = canvas.width * 0.3;
-                const pipHeight = pipWidth / (16/9);
-                const margin = canvas.width * 0.015;
-
-                if (stream1) drawVideoWithAspectRatio(video1Debug, 0, 0, canvas.width, canvas.height);
-                else drawPlaceholder(0, 0, canvas.width, canvas.height, 'ソース1 (背景) を選択');
-
-                if (stream2) {
-                    ctx.save();
-                    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-                    ctx.shadowBlur = 15;
-                    drawVideoWithAspectRatio(video2Debug, canvas.width - pipWidth - margin, canvas.height - pipHeight - margin, pipWidth, pipHeight);
-                    ctx.strokeStyle = '#4a5568';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(canvas.width - pipWidth - margin, canvas.height - pipHeight - margin, pipWidth, pipHeight);
-                    ctx.restore();
-                } else {
-                     drawPlaceholder(canvas.width - pipWidth - margin, canvas.height - pipHeight - margin, pipWidth, pipHeight, 'ソース2');
-                }
-            }
-            requestAnimationFrame(drawCanvas);
-        }
-        
         // --- プレゼンテーションモードのロジック ---
-        // UIの表示・非表示を制御します
         function updatePresentationModeUI() {
-            // bodyに 'presentation-mode' クラスがあるかどうかで表示を切り替える
             if (document.body.classList.contains('presentation-mode')) {
-                // --- プレゼンテーションモード（UI非表示） ---
-                // CSSによって .hide-in-presentation クラスを持つ要素が非表示になる
                 presentationModeText.textContent = '編集に戻る';
                 iconExpand.classList.add('hidden');
                 iconCompress.classList.remove('hidden');
             } else {
-                // --- 通常モード（UI表示） ---
-                // CSSのセレクタが一致しなくなり、UI要素が通常通り表示される
                 presentationModeText.textContent = '全画面表示';
                 iconExpand.classList.remove('hidden');
                 iconCompress.classList.add('hidden');
             }
         }
 
-        // 「全画面表示」ボタンがクリックされた時の処理
         togglePresentationModeBtn.addEventListener('click', () => {
-            // bodyタグに 'presentation-mode' クラスを付けたり外したりする
             document.body.classList.toggle('presentation-mode');
-            // 表示を更新
             updatePresentationModeUI();
         });
 
-        // Escapeキーでプレゼンテーションモードを終了する処理
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && document.body.classList.contains('presentation-mode')) {
                 document.body.classList.remove('presentation-mode');
@@ -423,10 +353,8 @@
             }
         });
 
-
         // 初期化処理
         updateLayoutButtons();
-        drawCanvas();
     </script>
 </body>
 </html>
