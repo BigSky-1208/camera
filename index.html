@@ -29,12 +29,17 @@
         #layout-container.layout-side-by-side {
             display: flex;
         }
-        #layout-container.layout-side-by-side > div {
+        /* IDを持つコンテナ(source1, source2)のみをフレックスアイテムとして均等に広げる */
+        #layout-container.layout-side-by-side > div[id] {
             flex: 1 1 50%;
         }
         /* レイアウト: PiP (Picture in Picture) */
         #layout-container.layout-pip {
             position: relative;
+        }
+        /* PiPモードでは分割線を非表示にする */
+        #layout-container.layout-pip .hide-in-pip {
+            display: none;
         }
         #layout-container.layout-pip #source1-container {
             width: 100%;
@@ -94,7 +99,7 @@
         <!-- 使い方 -->
         <div class="bg-gray-800 border border-gray-700 p-4 rounded-lg mb-6 max-w-4xl mx-auto hide-in-presentation">
             <h2 class="text-xl font-semibold mb-3 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                 使い方
             </h2>
             <ol class="list-decimal list-inside space-y-2 text-gray-300">
@@ -161,7 +166,7 @@
     <div id="firstTimeWarningModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 p-4">
         <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-lg w-full mx-auto border border-yellow-500">
             <h3 class="text-xl font-bold text-yellow-400 mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                 重要な使い方
             </h3>
             <p class="text-gray-300 mb-4">
@@ -178,7 +183,7 @@
     <div id="permissionModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 p-4">
         <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-auto border border-gray-700">
             <h3 class="text-xl font-bold text-red-400 mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                 アクセス権限エラー
             </h3>
             <p class="text-gray-300 mb-4">
