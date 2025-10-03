@@ -10,6 +10,18 @@
         body {
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
         }
+        kbd {
+            background-color: #4a5568;
+            border-radius: 3px;
+            border: 1px solid #718096;
+            box-shadow: 0 2px 0 #2d3748;
+            color: #edf2f7;
+            font-size: 0.8em;
+            font-weight: 700;
+            line-height: 1;
+            padding: 2px 4px;
+            white-space: nowrap;
+        }
         .placeholder-bg {
             background-image:
                 linear-gradient(45deg, #2d3748 25%, transparent 25%),
@@ -106,6 +118,7 @@
                 <li><strong class="text-yellow-400">重要:</strong> このツールは、<strong class="text-yellow-400">他のウィンドウを合成するための舞台</strong>です。ソース選択時に、このツール自体のタブは選ばないでください。</li>
                 <li>下の「ソース1」「ソース2」で、共有したい<strong class="text-yellow-400">別の</strong>アプリやブラウザタブを選択します。</li>
                 <li>レイアウトを選び、中央のプレビューに映像が合成されていることを確認します。</li>
+                <li>数字キーの <kbd>1</kbd> (左右分割) と <kbd>2</kbd> (小窓) でレイアウトを素早く切り替えられます。</li>
                 <li>Google Meetで画面共有を開始し、「<strong>タブを共有</strong>」から「<strong class="text-teal-400">Web画面合成ツール (OBS風)</strong>」を選んでください。</li>
             </ol>
         </div>
@@ -333,7 +346,7 @@
             }
         }
         
-        // --- プレゼンテーションモードのロジック ---
+        // --- プレゼンテーションモードとショートカットキーのロジック ---
         function updatePresentationModeUI() {
             if (document.body.classList.contains('presentation-mode')) {
                 presentationModeText.textContent = '編集に戻る';
@@ -352,9 +365,27 @@
         });
 
         document.addEventListener('keydown', (event) => {
+            // テキスト入力中などはショートカットを無効にする
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            // 'Escape'キーでプレゼンテーションモードを終了
             if (event.key === 'Escape' && document.body.classList.contains('presentation-mode')) {
                 document.body.classList.remove('presentation-mode');
                 updatePresentationModeUI();
+            }
+            // '1'キーで左右分割レイアウトに切り替え
+            if (event.key === '1') {
+                layoutContainer.classList.remove('layout-pip');
+                layoutContainer.classList.add('layout-side-by-side');
+                updateLayoutButtons();
+            }
+            // '2'キーで小窓(PiP)レイアウトに切り替え
+            if (event.key === '2') {
+                layoutContainer.classList.remove('layout-side-by-side');
+                layoutContainer.classList.add('layout-pip');
+                updateLayoutButtons();
             }
         });
 
