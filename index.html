@@ -79,6 +79,22 @@
             </div>
         </div>
 
+        <!-- 診断用パネル -->
+        <div class="mt-6 p-4 bg-gray-800 border border-yellow-500 rounded-lg max-w-4xl mx-auto">
+            <h3 class="text-lg font-semibold text-yellow-400">診断用プレビュー</h3>
+            <p class="text-sm text-gray-400 mb-2">もし下の黒い四角の中に映像がプレビューされない場合、お使いのブラウザやPCのセキュリティ設定が画面キャプチャをブロックしている可能性が高いです。</p>
+            <div class="flex gap-4">
+                <div class="w-1/2">
+                    <p class="text-sm">ソース1 生データ:</p>
+                    <video id="source1VideoDebug" class="w-full bg-black border border-gray-600 aspect-video" playsinline autoplay muted></video>
+                </div>
+                <div class="w-1/2">
+                    <p class="text-sm">ソース2 生データ:</p>
+                    <video id="source2VideoDebug" class="w-full bg-black border border-gray-600 aspect-video" playsinline autoplay muted></video>
+                </div>
+            </div>
+        </div>
+
         <!-- 内部処理用の非表示ビデオ要素 -->
         <div class="hidden">
             <video id="source1Video" playsinline autoplay muted></video>
@@ -130,6 +146,8 @@
         const ctx = canvas.getContext('2d');
         const video1 = document.getElementById('source1Video');
         const video2 = document.getElementById('source2Video');
+        const video1Debug = document.getElementById('source1VideoDebug');
+        const video2Debug = document.getElementById('source2VideoDebug');
         const status1 = document.getElementById('status1');
         const status2 = document.getElementById('status2');
         const modal = document.getElementById('permissionModal');
@@ -200,42 +218,53 @@
         }
 
         async function handleSourceSelection(type, sourceNum) {
-            const video = (sourceNum === 1) ? video1 : video2;
-            const status = (sourceNum === 1) ? status1 : status2;
-            
             try {
                 const stream = await navigator.mediaDevices[type === 'display' ? 'getDisplayMedia' : 'getUserMedia']({ video: true, audio: false });
                 
-                if (sourceNum === 1) stream1 = stream;
-                else stream2 = stream;
-
-                video.srcObject = stream;
-                status.textContent = type === 'display' ? '画面を選択中' : 'カメラを選択中';
+                if (sourceNum === 1) {
+                    stream1 = stream;
+                    video1.srcObject = stream;
+                    video1Debug.srcObject = stream;
+                    status1.textContent = type === 'display' ? '画面を選択中' : 'カメラを選択中';
+                } else { // sourceNum === 2
+                    stream2 = stream;
+                    video2.srcObject = stream;
+                    video2Debug.srcObject = stream;
+                    status2.textContent = type === 'display' ? '画面を選択中' : 'カメラを選択中';
+                }
 
                 stream.getVideoTracks()[0].onended = () => resetSource(sourceNum);
             } catch (err) {
                 console.error("Error selecting source:", err);
                 if (err.name === 'NotAllowedError') {
-                    status.textContent = 'アクセスが拒否されました';
+                    if(sourceNum === 1) status1.textContent = 'アクセスが拒否されました';
+                    else status2.textContent = 'アクセスが拒否されました';
                     modal.classList.remove('hidden');
                 } else {
-                    status.textContent = '選択失敗';
+                    if(sourceNum === 1) status1.textContent = '選択失敗';
+                    else status2.textContent = '選択失敗';
                 }
             }
         }
 
         function resetSource(sourceNum) {
-            const video = (sourceNum === 1) ? video1 : video2;
-            const status = (sourceNum === 1) ? status1 : status2;
-            let stream = (sourceNum === 1) ? stream1 : stream2;
-
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
+            if (sourceNum === 1) {
+                if (stream1) {
+                    stream1.getTracks().forEach(track => track.stop());
+                }
+                stream1 = null;
+                video1.srcObject = null;
+                video1Debug.srcObject = null;
+                status1.textContent = '未選択';
+            } else { // sourceNum === 2
+                if (stream2) {
+                    stream2.getTracks().forEach(track => track.stop());
+                }
+                stream2 = null;
+                video2.srcObject = null;
+                video2Debug.srcObject = null;
+                status2.textContent = '未選択';
             }
-            video.srcObject = null;
-            if (sourceNum === 1) stream1 = null;
-            else stream2 = null;
-            status.textContent = '未選択';
         }
         
         function getLines(ctx, text, maxWidth) {
@@ -277,7 +306,7 @@
         }
 
         function drawVideoWithAspectRatio(video, x, y, w, h) {
-             if (video.videoWidth === 0) {
+             if (video.videoWidth === 0 || video.paused) {
                  const errorText = "🚫 表示できません。このツール自体を選択していませんか？「リセット」を押して、別のウィンドウを選び直してください。";
                  drawPlaceholder(x, y, w, h, errorText, true);
                  return;
