@@ -19,19 +19,48 @@
             background-size: 20px 20px;
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
+        /* プレゼンテーションモード用のスタイル */
+        body.presentation-mode {
+            overflow: hidden; /* スクロールバーを隠す */
+        }
+        .hide-in-presentation {
+            display: none !important; /* UI要素を非表示 */
+        }
+        body.presentation-mode #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+            border-radius: 0;
+            border: none;
+        }
+        body.presentation-mode #togglePresentationMode {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            opacity: 0.15;
+            transition: opacity 0.3s ease-in-out;
+        }
+        body.presentation-mode #togglePresentationMode:hover {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
     <main class="flex-grow container mx-auto p-4 md:p-6">
         <!-- ヘッダー -->
-        <div class="text-center mb-6">
+        <div class="text-center mb-6 hide-in-presentation">
             <h1 class="text-3xl md:text-4xl font-bold">Web画面合成ツール (OBS風)</h1>
             <p class="text-gray-400 mt-2">インストール不要。2つの画面やカメラを1つに合成し、Google Meetで共有できます。</p>
         </div>
 
         <!-- 使い方 -->
-        <div class="bg-gray-800 border border-gray-700 p-4 rounded-lg mb-6 max-w-4xl mx-auto">
+        <div class="bg-gray-800 border border-gray-700 p-4 rounded-lg mb-6 max-w-4xl mx-auto hide-in-presentation">
             <h2 class="text-xl font-semibold mb-3 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                 使い方
@@ -44,19 +73,18 @@
             </ol>
         </div>
         
-        <!-- レイアウト選択 -->
-        <div class="flex justify-center items-center gap-4 mb-6">
+        <!-- レイアウト選択 & プレゼンテーションモード -->
+        <div class="flex justify-center items-center gap-4 mb-6 hide-in-presentation">
             <h3 class="text-lg font-semibold">レイアウト:</h3>
             <button id="layout-side-by-side" class="bg-gray-700 hover:bg-teal-600 border-2 border-teal-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">左右分割</button>
             <button id="layout-pip" class="bg-gray-700 hover:bg-teal-600 border-2 border-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">小窓 (PiP)</button>
         </div>
 
-
         <!-- メインコンテンツ -->
         <div class="flex flex-col lg:flex-row items-center justify-center gap-4">
             
             <!-- ソース1 コントロール -->
-            <div class="w-full lg:w-1/5 bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center space-y-3">
+            <div class="w-full lg:w-1/5 bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center space-y-3 hide-in-presentation">
                 <h3 class="text-lg font-bold">ソース1</h3>
                 <button id="selectScreen1" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">画面を選択</button>
                 <button id="selectCamera1" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">カメラを選択</button>
@@ -65,12 +93,12 @@
             </div>
 
             <!-- 合成プレビュー -->
-            <div class="w-full lg:w-3/5 aspect-video bg-black rounded-lg shadow-2xl border-2 border-gray-700 overflow-hidden">
+            <div id="canvas-container" class="w-full lg:w-3/5 aspect-video bg-black rounded-lg shadow-2xl border-2 border-gray-700 overflow-hidden">
                 <canvas id="compositeCanvas" class="w-full h-full placeholder-bg"></canvas>
             </div>
 
             <!-- ソース2 コントロール -->
-            <div class="w-full lg:w-1/5 bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center space-y-3">
+            <div class="w-full lg:w-1/5 bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center space-y-3 hide-in-presentation">
                 <h3 class="text-lg font-bold">ソース2</h3>
                 <button id="selectScreen2" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">画面を選択</button>
                 <button id="selectCamera2" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">カメラを選択</button>
@@ -79,8 +107,18 @@
             </div>
         </div>
 
+         <!-- プレゼンテーションモードボタン -->
+         <div class="flex justify-center mt-6">
+             <button id="togglePresentationMode" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 flex items-center">
+                <svg id="presentation-icon-expand" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                <svg id="presentation-icon-compress" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 hidden"><path d="M15 3h6v6m-11 5L21 3m-6 12v6h-6m5-11L3 21"></path></svg>
+                <span id="presentationModeText">全画面表示</span>
+            </button>
+        </div>
+
+
         <!-- 診断用パネル -->
-        <div class="mt-6 p-4 bg-gray-800 border border-yellow-500 rounded-lg max-w-4xl mx-auto">
+        <div class="mt-6 p-4 bg-gray-800 border border-yellow-500 rounded-lg max-w-4xl mx-auto hide-in-presentation">
             <h3 class="text-lg font-semibold text-yellow-400">診断用プレビュー</h3>
             <p class="text-sm text-gray-400 mb-2">もし下の黒い四角の中に映像がプレビューされない場合、お使いのブラウザやPCのセキュリティ設定が画面キャプチャをブロックしている可能性が高いです。</p>
             <div class="flex gap-4">
@@ -132,7 +170,7 @@
         </div>
     </div>
     
-    <footer class="text-center text-gray-500 text-sm p-4">
+    <footer class="text-center text-gray-500 text-sm p-4 hide-in-presentation">
         <p>このツールは、ブラウザの機能のみで動作します。映像データが外部サーバーに送信されることはありません。</p>
     </footer>
 
@@ -149,6 +187,11 @@
         const closeWarningModalBtn = document.getElementById('closeWarningModal');
         const layoutSideBySideBtn = document.getElementById('layout-side-by-side');
         const layoutPipBtn = document.getElementById('layout-pip');
+        const togglePresentationModeBtn = document.getElementById('togglePresentationMode');
+        const presentationModeText = document.getElementById('presentationModeText');
+        const iconExpand = document.getElementById('presentation-icon-expand');
+        const iconCompress = document.getElementById('presentation-icon-compress');
+
 
         let stream1 = null;
         let stream2 = null;
@@ -355,6 +398,31 @@
             }
             requestAnimationFrame(drawCanvas);
         }
+        
+        // プレゼンテーションモードのロジック
+        function updatePresentationModeUI() {
+            if (document.body.classList.contains('presentation-mode')) {
+                presentationModeText.textContent = '編集に戻る';
+                iconExpand.classList.add('hidden');
+                iconCompress.classList.remove('hidden');
+            } else {
+                presentationModeText.textContent = '全画面表示';
+                iconExpand.classList.remove('hidden');
+                iconCompress.classList.add('hidden');
+            }
+        }
+
+        togglePresentationModeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('presentation-mode');
+            updatePresentationModeUI();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && document.body.classList.contains('presentation-mode')) {
+                document.body.classList.remove('presentation-mode');
+                updatePresentationModeUI();
+            }
+        });
 
         updateLayoutButtons();
         drawCanvas();
