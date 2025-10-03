@@ -95,11 +95,6 @@
             </div>
         </div>
 
-        <!-- 内部処理用の非表示ビデオ要素 -->
-        <div class="hidden">
-            <video id="source1Video" playsinline autoplay muted></video>
-            <video id="source2Video" playsinline autoplay muted></video>
-        </div>
     </main>
 
     <!-- 初回警告モーダル -->
@@ -144,8 +139,6 @@
     <script>
         const canvas = document.getElementById('compositeCanvas');
         const ctx = canvas.getContext('2d');
-        const video1 = document.getElementById('source1Video');
-        const video2 = document.getElementById('source2Video');
         const video1Debug = document.getElementById('source1VideoDebug');
         const video2Debug = document.getElementById('source2VideoDebug');
         const status1 = document.getElementById('status1');
@@ -223,12 +216,10 @@
                 
                 if (sourceNum === 1) {
                     stream1 = stream;
-                    video1.srcObject = stream;
                     video1Debug.srcObject = stream;
                     status1.textContent = type === 'display' ? '画面を選択中' : 'カメラを選択中';
                 } else { // sourceNum === 2
                     stream2 = stream;
-                    video2.srcObject = stream;
                     video2Debug.srcObject = stream;
                     status2.textContent = type === 'display' ? '画面を選択中' : 'カメラを選択中';
                 }
@@ -253,7 +244,6 @@
                     stream1.getTracks().forEach(track => track.stop());
                 }
                 stream1 = null;
-                video1.srcObject = null;
                 video1Debug.srcObject = null;
                 status1.textContent = '未選択';
             } else { // sourceNum === 2
@@ -261,7 +251,6 @@
                     stream2.getTracks().forEach(track => track.stop());
                 }
                 stream2 = null;
-                video2.srcObject = null;
                 video2Debug.srcObject = null;
                 status2.textContent = '未選択';
             }
@@ -335,10 +324,10 @@
 
             if (currentLayout === 'side-by-side') {
                 const halfWidth = canvas.width / 2;
-                if (stream1) drawVideoWithAspectRatio(video1, 0, 0, halfWidth, canvas.height);
+                if (stream1) drawVideoWithAspectRatio(video1Debug, 0, 0, halfWidth, canvas.height);
                 else drawPlaceholder(0, 0, halfWidth, canvas.height, 'ソース1を選択');
                 
-                if (stream2) drawVideoWithAspectRatio(video2, halfWidth, 0, halfWidth, canvas.height);
+                if (stream2) drawVideoWithAspectRatio(video2Debug, halfWidth, 0, halfWidth, canvas.height);
                 else drawPlaceholder(halfWidth, 0, halfWidth, canvas.height, 'ソース2を選択');
 
                 ctx.fillStyle = '#4a5568';
@@ -348,14 +337,14 @@
                 const pipHeight = pipWidth / (16/9);
                 const margin = canvas.width * 0.015;
 
-                if (stream1) drawVideoWithAspectRatio(video1, 0, 0, canvas.width, canvas.height);
+                if (stream1) drawVideoWithAspectRatio(video1Debug, 0, 0, canvas.width, canvas.height);
                 else drawPlaceholder(0, 0, canvas.width, canvas.height, 'ソース1 (背景) を選択');
 
                 if (stream2) {
                     ctx.save();
                     ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
                     ctx.shadowBlur = 15;
-                    drawVideoWithAspectRatio(video2, canvas.width - pipWidth - margin, canvas.height - pipHeight - margin, pipWidth, pipHeight);
+                    drawVideoWithAspectRatio(video2Debug, canvas.width - pipWidth - margin, canvas.height - pipHeight - margin, pipWidth, pipHeight);
                     ctx.strokeStyle = '#4a5568';
                     ctx.lineWidth = 2;
                     ctx.strokeRect(canvas.width - pipWidth - margin, canvas.height - pipHeight - margin, pipWidth, pipHeight);
