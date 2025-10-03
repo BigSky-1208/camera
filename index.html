@@ -116,21 +116,10 @@
             </button>
         </div>
 
-
-        <!-- 診断用パネル -->
-        <div class="mt-6 p-4 bg-gray-800 border border-yellow-500 rounded-lg max-w-4xl mx-auto hide-in-presentation">
-            <h3 class="text-lg font-semibold text-yellow-400">診断用プレビュー</h3>
-            <p class="text-sm text-gray-400 mb-2">もし下の黒い四角の中に映像がプレビューされない場合、お使いのブラウザやPCのセキュリティ設定が画面キャプチャをブロックしている可能性が高いです。</p>
-            <div class="flex gap-4">
-                <div class="w-1/2">
-                    <p class="text-sm">ソース1 生データ:</p>
-                    <video id="source1VideoDebug" class="w-full bg-black border border-gray-600 aspect-video" playsinline autoplay muted></video>
-                </div>
-                <div class="w-1/2">
-                    <p class="text-sm">ソース2 生データ:</p>
-                    <video id="source2VideoDebug" class="w-full bg-black border border-gray-600 aspect-video" playsinline autoplay muted></video>
-                </div>
-            </div>
+        <!-- 診断用パネル (スクロールしても描画が止まらないよう、画面隅に小さく固定表示) -->
+        <div class="fixed bottom-0 left-0 w-px h-px opacity-0 pointer-events-none -z-10">
+            <video id="source1VideoDebug" playsinline autoplay muted></video>
+            <video id="source2VideoDebug" playsinline autoplay muted></video>
         </div>
 
     </main>
@@ -338,7 +327,7 @@
         }
 
         function drawVideoWithAspectRatio(video, x, y, w, h) {
-             if (video.videoWidth === 0 || video.paused) {
+             if (video.videoWidth === 0 || !video.srcObject) { // !video.srcObject を追加
                  const errorText = "🚫 表示できません。このツール自体を選択していませんか？「リセット」を押して、別のウィンドウを選び直してください。";
                  drawPlaceholder(x, y, w, h, errorText, true);
                  return;
@@ -349,7 +338,7 @@
 
             if (videoAspect > canvasAspect) {
                 drawWidth = w;
-                drawHeight = drawWidth / videoAspect;
+                drawHeight = drawWidth / videoaspect;
                 offsetX = x;
                 offsetY = y + (h - drawHeight) / 2;
             } else {
