@@ -37,11 +37,10 @@
                 使い方
             </h2>
             <ol class="list-decimal list-inside space-y-2 text-gray-300">
-                <li><strong class="text-yellow-400">重要:</strong> ソースを選択する際、このツール自体のタブ/ウィンドウは選択しないでください。</li>
-                <li>下の「ソース1」と「ソース2」で、共有したい<strong class="text-yellow-400">別の</strong>画面（ウィンドウ or タブ）やカメラを選択します。</li>
-                <li>レイアウトを選択し、中央のプレビューに合成された映像が表示されることを確認します。</li>
-                <li>Google Meetの会議画面に移動し、「画面を共有」から「**タブ**」を選択します。</li>
-                <li>タブの一覧から「<strong class="text-teal-400">Web画面合成ツール (OBS風)</strong>」を選んで共有を開始してください。</li>
+                <li><strong class="text-yellow-400">重要:</strong> このツールは、<strong class="text-yellow-400">他のウィンドウを合成するための舞台</strong>です。ソース選択時に、このツール自体のタブは選ばないでください。</li>
+                <li>下の「ソース1」「ソース2」で、共有したい<strong class="text-yellow-400">別の</strong>アプリやブラウザタブを選択します。</li>
+                <li>レイアウトを選び、中央のプレビューに映像が合成されていることを確認します。</li>
+                <li>Google Meetで画面共有を開始し、「<strong>タブを共有</strong>」から「<strong class="text-teal-400">Web画面合成ツール (OBS風)</strong>」を選んでください。</li>
             </ol>
         </div>
         
@@ -87,6 +86,23 @@
         </div>
     </main>
 
+    <!-- 初回警告モーダル -->
+    <div id="firstTimeWarningModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-lg w-full mx-auto border border-yellow-500">
+            <h3 class="text-xl font-bold text-yellow-400 mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                重要な使い方
+            </h3>
+            <p class="text-gray-300 mb-4">
+                このツールは、<strong>他の</strong>ウィンドウやタブを合成するための「舞台」です。
+            </p>
+            <p class="text-gray-300 mb-6">
+                ソースを選択する際、<strong>このツール自体のタブは絶対に選ばないでください。</strong>ブラウザの仕様により、画面が真っ黒になり、正常に動作しません。
+            </p>
+            <button id="closeWarningModal" class="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-2 px-4 rounded-md transition-colors duration-200">理解しました</button>
+        </div>
+    </div>
+
     <!-- エラーメッセージ用モーダル -->
     <div id="permissionModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 p-4">
         <div class="bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-auto border border-gray-700">
@@ -118,17 +134,28 @@
         const status2 = document.getElementById('status2');
         const modal = document.getElementById('permissionModal');
         const closeModalBtn = document.getElementById('closeModal');
+        const warningModal = document.getElementById('firstTimeWarningModal');
+        const closeWarningModalBtn = document.getElementById('closeWarningModal');
         const layoutSideBySideBtn = document.getElementById('layout-side-by-side');
         const layoutPipBtn = document.getElementById('layout-pip');
 
         let stream1 = null;
         let stream2 = null;
         let currentLayout = 'side-by-side';
+        let pendingAction = null;
 
         canvas.width = 1280;
         canvas.height = 720;
         
         closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
+        closeWarningModalBtn.addEventListener('click', () => {
+            warningModal.classList.add('hidden');
+            localStorage.setItem('webObsToolWarningSeen', 'true');
+            if (pendingAction) {
+                pendingAction();
+                pendingAction = null;
+            }
+        });
 
         function updateLayoutButtons() {
             if (currentLayout === 'side-by-side') {
@@ -153,13 +180,24 @@
             updateLayoutButtons();
         });
 
-        document.getElementById('selectScreen1').addEventListener('click', () => handleSourceSelection('display', 1));
-        document.getElementById('selectCamera1').addEventListener('click', () => handleSourceSelection('user', 1));
-        document.getElementById('selectScreen2').addEventListener('click', () => handleSourceSelection('display', 2));
-        document.getElementById('selectCamera2').addEventListener('click', () => handleSourceSelection('user', 2));
+        document.getElementById('selectScreen1').addEventListener('click', () => triggerSourceSelection('display', 1));
+        document.getElementById('selectCamera1').addEventListener('click', () => triggerSourceSelection('user', 1));
+        document.getElementById('selectScreen2').addEventListener('click', () => triggerSourceSelection('display', 2));
+        document.getElementById('selectCamera2').addEventListener('click', () => triggerSourceSelection('user', 2));
 
         document.getElementById('reset1').addEventListener('click', () => resetSource(1));
         document.getElementById('reset2').addEventListener('click', () => resetSource(2));
+
+        function triggerSourceSelection(type, sourceNum) {
+            const action = () => handleSourceSelection(type, sourceNum);
+
+            if (type === 'display' && !localStorage.getItem('webObsToolWarningSeen')) {
+                pendingAction = action;
+                warningModal.classList.remove('hidden');
+            } else {
+                action();
+            }
+        }
 
         async function handleSourceSelection(type, sourceNum) {
             const video = (sourceNum === 1) ? video1 : video2;
@@ -200,19 +238,48 @@
             status.textContent = '未選択';
         }
         
-        function drawPlaceholder(x, y, w, h, text) {
-            ctx.fillStyle = '#2d3748';
+        function getLines(ctx, text, maxWidth) {
+            const words = text.split(" ");
+            let lines = [];
+            if (!words.length) return lines;
+            let currentLine = words[0];
+
+            for (let i = 1; i < words.length; i++) {
+                const word = words[i];
+                const width = ctx.measureText(currentLine + " " + word).width;
+                if (width < maxWidth) {
+                    currentLine += " " + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        function drawPlaceholder(x, y, w, h, text, isError = false) {
+            ctx.fillStyle = isError ? '#5f2120' : '#2d3748';
             ctx.fillRect(x, y, w, h);
             ctx.fillStyle = 'white';
-            ctx.font = '24px "Inter"';
+            ctx.font = '20px "Inter"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(text, x + w / 2, y + h / 2);
+            
+            const lines = getLines(ctx, text, w - 40);
+            const lineHeight = 24;
+            const totalHeight = lines.length * lineHeight;
+            let startY = y + (h - totalHeight) / 2 + (lineHeight / 2) - 4;
+
+            lines.forEach((line, i) => {
+                ctx.fillText(line, x + w / 2, startY + i * lineHeight);
+            });
         }
 
         function drawVideoWithAspectRatio(video, x, y, w, h) {
              if (video.videoWidth === 0) {
-                 drawPlaceholder(x, y, w, h, "表示不可: 別の画面を選択してください");
+                 const errorText = "🚫 表示できません。このツール自体を選択していませんか？「リセット」を押して、別のウィンドウを選び直してください。";
+                 drawPlaceholder(x, y, w, h, errorText, true);
                  return;
              }
             const videoAspect = video.videoWidth / video.videoHeight;
@@ -221,7 +288,7 @@
 
             if (videoAspect > canvasAspect) {
                 drawWidth = w;
-                drawHeight = drawWidth / videoAspect;
+                drawHeight = drawWidth / videoaspect;
                 offsetX = x;
                 offsetY = y + (h - drawHeight) / 2;
             } else {
@@ -248,9 +315,9 @@
                 ctx.fillStyle = '#4a5568';
                 ctx.fillRect(halfWidth - 1, 0, 2, canvas.height);
             } else if (currentLayout === 'pip') {
-                const pipWidth = canvas.width * 0.25;
+                const pipWidth = canvas.width * 0.3;
                 const pipHeight = pipWidth / (16/9);
-                const margin = canvas.width * 0.01;
+                const margin = canvas.width * 0.015;
 
                 if (stream1) drawVideoWithAspectRatio(video1, 0, 0, canvas.width, canvas.height);
                 else drawPlaceholder(0, 0, canvas.width, canvas.height, 'ソース1 (背景) を選択');
